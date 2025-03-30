@@ -1,0 +1,81 @@
+
+
+// Player's reaction time delay
+ct Int REACTION_TIME = max(60 * (200 / 1000), 1)
+
+
+/// A player in the game
+struct Player
+    // Position of the player in the world
+    Position position
+
+    // Velocity of the player
+    Velocity velocity
+
+    // Player collision mask
+    U collision_mask
+
+    // Count down a time period when the player can still jump
+    U delay_ground // player was on the ground (coyote-time)
+    U delay_input  // player pressed the jump button (input buffering)
+
+// All players have the same dimensions
+ct Dimension PLAYER_DIM = Dimension(1.0, 1.0)
+
+// Define how fast the players move horizontally
+ct Real PLAYER_SPEED_RUN  = 2.0
+ct Real PLAYER_SPEED_WALK = 1.0
+
+// Define the jump trajectory parameters of the players
+ct Real PLAYER_JUMP_RANGE      = 32.0 // How far the player can jump
+ct Real PLAYER_JUMP_HEIGHT_MAX = 32.0 // The maximal height the player can reach
+ct Real PLAYER_JUMP_HEIGHT_MIN = 16.0 // The minimal height the player will reach
+ct Real PLAYER_JUMP_OFFSET     =  0.6 // Offset of the peak of the jump as a ratio
+
+// Define the walljump configuration
+ct Real PLAYER_WALL_SLIDE_SPEED = 0.5
+
+
+// Define the high jump trajectory
+// How high the player can jump if they hold the jump button
+ct Ballistic PLAYER_JUMP_HIGH = from_height_and_time(
+    PLAYER_JUMP_HEIGHT_MAX, 
+    PLAYER_JUMP_RANGE * PLAYER_SPEED_RUN * PLAYER_JUMP_OFFSET
+)
+
+// Define the low jump trajectory
+// How high the player can jump if they just tap the jump button
+ct Ballistic PLAYER_JUMP_LOW = from_height_and_impulse(
+    PLAYER_JUMP_HEIGHT_MIN, 
+    PLAYER_JUMP_HIGH.impulse
+)
+
+// Define the gravity applied to the player when falling back down to the ground
+ct Real PLAYER_FALL = from_height_and_time(
+    PLAYER_JUMP_HEIGHT_MAX, 
+    PLAYER_JUMP_RANGE * PLAYER_SPEED_RUN * (1.0 - PLAYER_JUMP_OFFSET)
+).gravity
+
+// Define the meaning of each bit in the collision mask
+ct U COLLISION_CEILING = %00010000
+ct U COLLISION_FLOOR   = %00100000
+ct U COLLISION_LEFT    = %01000000
+ct U COLLISION_RIGHT   = %10000000
+
+
+// Declare a pool of two players
+macro("pool_contiguous", "Player", "2", "players")
+
+
+// Initialize the players
+fn init_players(U num, Position start_pos)
+    players_num = num
+    for U i = 0; i < players_num; i += 1
+        players[i] = Player(start_pos, Velocity(), 0, 0, 0)
+
+
+// Compute the velocity of the players based on their inputs
+fn move_players()
+    for U i = 0; i < players_num; i += 1
+        move_player(i)
+

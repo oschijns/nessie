@@ -1,0 +1,123 @@
+/*
+ * Copyright (c) 2022, Patrick Bene
+ * This file is distributed under the Boost Software License, Version 1.0.
+ * See LICENSE_1_0.txt or https://www.boost.org/LICENSE_1_0.txt 
+ */
+
+// Code for compressing and decompressing the RLZ format.
+// RLZ is a simple run-length encoding ideal for data with repeated values.
+// It is most useful for storing nametable data.
+
+// RLZ format:
+// -----------
+// A sequence of runs, where the first byte of a run (N) determines the effect:
+// N = $00:        Terminate stream
+// N = $01 to $7F: Copy the next byte (N + 2) times
+// N = $80 to $FF: Copy the next (N - 127) bytes verbatim
+
+// Reads from 'ptr' and uploads to PPUDATA until the stream is terminated by a $00 byte.
+// Returns a pointer to one past the end of the data.
+asm fn ppu_upload_rlz(CCC/rlz ptr) CCC/rlz
+: employs /rlz
+: +static_fixed
+    default
+        if __fixed
+            push
+        if __illegal
+            lax &ptr.bank
+        else
+            lda &ptr.bank
+            tax
+        sta &return.c
+        switch ax
+    label loop
+        ldy #0
+        if __illegal
+            lax (&ptr.a), y
+        else
+            lda (&ptr.a), y
+            tax
+        beq done
+        bpl same_run
+    label unique_run
+        iny
+        lda (&ptr.a), y
+        sta PPUDATA
+        dex
+        bmi unique_run
+    label increment_ptr
+        tya
+        sec
+        adc &ptr.a
+        sta &ptr.a
+        bcc loop
+        inc &ptr.b
+        bcs loop
+    label same_run
+        inx
+        iny
+        lda (&ptr.a), y
+    label same_run_loop
+        sta PPUDATA
+        dex
+        bpl same_run_loop
+        bmi increment_ptr
+    label done
+        if __fixed
+            pop
+        ldy &ptr.b
+        ldx &ptr.a
+        inx
+        stx &return.a
+        bne done_increment
+        iny
+    label done_increment
+        sty &return.b
+        rts
+
+// Compresses the data 'in' to RLZ format at compile-time.
+// If 'terminator' is true, a value of 0 will be appended onto the end.
+ct fn compress_rlz(U{} in, Bool terminator) U{}
+    U{} out = U{}()
+    for Int i = 0; i < len(in);
+        U c = in{i}
+
+        // Count a run of identical characters.
+
+        Int run = 1
+        while run < 129 && i + run < len(in) && in{i + run} == c
+            run += 1
+
+        if run > 2
+            push(out, run - 2)
+            push(out, c)
+            i += run
+            continue
+
+        // Count a run of different characters.
+
+        Int match = 1
+        run = 1
+        while match < 128 && i + match < len(in)
+            if in{i + match} == c
+                run += 1
+                if run == 3
+                    match -= 2
+                    break
+            else
+                run = 1
+                c = in{i + match}
+            
+            match += 1
+        
+        push(out, match + $80 - 1)
+        for Int j = 0; j < match; j += 1
+            push(out, in{i + j})
+
+        i += match
+
+    if(terminator)
+        push(out, 0)
+
+    return out
+

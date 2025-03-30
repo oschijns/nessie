@@ -1,0 +1,85 @@
+
+// Set of math objects for physics calculation
+
+// Position of an entity in the world
+struct Position
+    UUF x
+    UUF y
+
+// Size of an object
+struct Dimension
+    UF width
+    UF height
+
+// Velocity of an object
+struct Velocity
+    SF x
+    SF y
+
+// Epsilon distance
+ct Real EPSILON = $0.01
+
+// Check if two objects intersect over one axis
+fn overlap_single_axis(UUF a_pos, UF a_dim, UUF b_pos, UF b_dim) Bool
+: +inline
+    Bool c
+    c = (a_pos -= b_pos)
+    c = (a_pos -= UUF(b_dim - UF(c)))
+    return a_pos += UUF(a_dim + b_dim - 1 + UF(c))
+
+
+// Check if two objects intersect
+fn overlap(Position a_pos, Dimension a_dim, Position b_pos, Dimension b_dim) Bool
+    return (
+        overlap_single_axis(a_pos.x, a_dim.width , b_pos.x, b_dim.width ) &&
+        overlap_single_axis(a_pos.y, a_dim.height, b_pos.y, b_dim.height))
+
+
+// A set of parameters used for trajectory calculation
+// Can only be used at compile time for constants
+struct Ballistic
+    Real height
+    Real time
+    Real impulse
+    Real gravity
+
+// Compile time functions to compute a ballistic trajectory from two contraints
+
+// contrained by height of the peak and time to reach that peak 
+ct fn from_height_and_time(Real height, Real time) Ballistic
+    Real impulse =  2.0 * height / time
+    Real gravity = -2.0 * height / (time * time)
+    return Ballistic(height, time, impulse, gravity)
+
+// constrained by the height of the peak and the initial vertical velocity
+ct fn from_height_and_impulse(Real height, Real impulse) Ballistic
+    Real time    = 2.0 * height / impulse
+    Real gravity = -(impulse * impulse) / (2.0 * height)
+    return Ballistic(height, time, impulse, gravity)
+
+/* SQRT not supported
+// constrained by the height of the peak and the gravity applied
+ct fn from_height_and_gravity(Real height, Real gravity) Ballistic
+    Real time    = sqrt(2.0 * height / gravity)
+    Real impulse = sqrt(2.0 * height * gravity)
+    return Ballistic(height, time, impulse, gravity)
+// */
+
+// constrained by the time to reach the peak and the initial vertical velocity
+ct fn from_time_and_impulse(Real time, Real impulse) Ballistic
+    Real height  = 0.5 * impulse * time
+    Real gravity = -impulse * time
+    return Ballistic(height, time, impulse, gravity)
+
+// constrained by the time to reach the peak and the gravity applied
+ct fn from_time_and_gravity(Real time, Real gravity) Ballistic
+    Real height  = -0.5 * gravity * (time * time)
+    Real impulse = -gravity * time
+    return Ballistic(height, time, impulse, gravity)
+
+// constrained by the initial vertical velocity and the gravity applied
+ct fn from_impulse_and_gravity(Real impulse, Real gravity) Ballistic
+    Real height = -0.5 * (impulse * impulse) / gravity
+    Real time   = -impulse / gravity
+    return Ballistic(height, time, impulse, gravity)
+

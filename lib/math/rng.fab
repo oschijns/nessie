@@ -1,0 +1,74 @@
+/*
+ * Copyright (c) 2022, Patrick Bene
+ * This file is distributed under the Boost Software License, Version 1.0.
+ * See LICENSE_1_0.txt or https://www.boost.org/LICENSE_1_0.txt 
+ */
+
+// RNG means random number generator.
+// This file contains code for generating random numbers.
+
+vars
+    U[2] rng_state = U[2](1, 1)
+
+// Helper function for setting 'rng_state'.
+fn seed(UU value)
+: +inline
+    if value == 0
+        value = $BEEF
+    rng_state[0] = value.a
+    rng_state[1] = value.b
+
+// Returns a pseudo-random 8-bit value.
+asm fn rand() U
+: employs
+: +static_fixed
+    default
+        lda &rng_state+0
+        asl
+        rol &rng_state+1
+        bcc done_xor_0
+        eor #$2D // apply XOR feedback whenever a 1 bit is shifted out
+    label done_xor_0
+        asl
+        rol &rng_state+1
+        bcc done_xor_1
+        eor #$2D
+    label done_xor_1
+        sta &rng_state+0
+        sta &return
+        rts
+
+// Returns a pseudo-random 16-bit value.
+fn rand_uu() UU
+: +inline
+    UU result
+    result.a = rand()
+    result.b = rand()
+    return result
+
+// Returns a pseudo-random 24-bit value.
+fn rand_uuu() UUU
+: +inline
+    UUU result
+    result.a = rand()
+    result.b = rand()
+    result.c = rand()
+    return result
+
+// Returns a random value less than 'bound', or 0 if 'bound' is 0.
+fn randb(U bound) U
+    if bound == 0
+        return 0
+
+    ct U[8] table = U[8](%1, %11, %111, %1111, %11111, %111111, %1111111, %11111111)
+
+    U i = $FF
+    do for U v = bound - 1; v; v >>= 1
+        i += 1
+    U mask = table[i]
+
+    U result
+    do while result >= bound
+        result = rand() & mask
+
+    return result

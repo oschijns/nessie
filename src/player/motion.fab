@@ -1,0 +1,116 @@
+
+// Move a player in the world
+fn move_player(U index)
+
+    // read the player's data
+    U pad_held  = pads[index].held
+    U pad_press = pads[index].pressed
+    Velocity vel   = players[index].velocity
+    U collision    = players[index].collision_mask
+    U delay_ground = players[index].delay_ground
+    U delay_input  = players[index].delay_input
+
+    // pick the target speed based on player state
+    UF speed
+    if pad_held & BUTTON_B
+        speed = PLAYER_SPEED_RUN
+    else
+        speed = PLAYER_SPEED_WALK
+
+    // set speed with direction
+    vel.x = 0.0
+    if pad_held & BUTTON_LEFT
+        vel.x -= speed
+    if pad_held & BUTTON_RIGHT
+        vel.x += speed
+
+    // Check whenever the player should jump
+    Bool wants_to_jump = false
+    if collision & COLLISION_FLOOR
+        // Make the player stick to the ground
+        vel.y = 0.0
+
+        // reset the timer for coyote time
+        delay_ground = REACTION_TIME
+
+        // Check if the player pressed the jump button a few frames ago
+        if delay_input > 0
+            wants_to_jump = true
+
+    /*
+    else if collision & (COLLISION_LEFT | COLLISION_RIGHT)
+        // The player is against a wall
+
+        // Make the player slide along the wall
+        if vel.y < PLAYER_WALL_SLIDE_SPEED && vel.y > 0 // (Down is positive)
+            vel.y += 0.1
+
+            // clamp the slide speed
+            if vel.y > PLAYER_WALL_SLIDE_SPEED
+                vel.y = PLAYER_WALL_SLIDE_SPEED
+
+        // 
+    */
+
+    else
+        // The player just pressed the jump button while airborne
+        if pad_press & BUTTON_A
+            // reset the timer for the input buffering
+            delay_input = REACTION_TIME
+
+            // Check if the player was on the ground a few frames ago
+            if delay_ground > 0
+                wants_to_jump = true
+
+        // Determine the gravity force to apply to the player
+        if vel.y > 0 // (Down is positive)
+            vel.y -= PLAYER_FALL
+        else if pad_held & BUTTON_A
+            vel.y -= PLAYER_JUMP_HIGH.gravity
+        else
+            vel.y -= PLAYER_JUMP_LOW.gravity
+
+        // decrement the grounded timer
+        // (this only need to run when the player is actually not grounded)
+        if delay_ground -= 1
+            delay_ground = 0
+
+    // decrement the input buffering timer
+    // (run it always since the button press is instantaneous)
+    if delay_input -= 1
+        delay_input = 0
+    
+    // The player wants to jump
+    if wants_to_jump
+        // Reset both timers
+        delay_ground = 0
+        delay_input  = 0
+
+        // Trigger a jump
+        vel.y = -PLAYER_JUMP_HIGH.impulse
+
+    // Applied the computed values back to the player's character
+    players[index].velocity     = vel
+    players[index].delay_ground = delay_ground
+    players[index].delay_input  = delay_input
+
+
+    // Apply the computed velocity to the position of the character
+    Position pos = players[index].position
+    pos.x += vel.x
+    pos.y += vel.y
+
+    ct Real FLOOR_HEIGHT = 200.0
+
+    if pos.y >= FLOOR_HEIGHT
+        pos.y = FLOOR_HEIGHT
+        players[index].collision_mask |= COLLISION_FLOOR
+    else
+        players[index].collision_mask = 0
+    
+    players[index].position = pos
+
+    if pad_press & BUTTON_SELECT
+        players[index].position.y = 0.0
+
+

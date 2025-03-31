@@ -26,6 +26,17 @@ fn move_player(U index)
 
     // Check whenever the player should jump
     Bool wants_to_jump = false
+
+    // The player just pressed the jump button while airborne
+    if pad_press & BUTTON_A
+        // reset the timer for the input buffering
+        delay_input = REACTION_TIME
+
+        // Check if the player was on the ground a few frames ago
+        if delay_ground > 0
+            wants_to_jump = true
+
+
     if collision & COLLISION_FLOOR
         // Make the player stick to the ground
         vel.y = 0.0
@@ -53,15 +64,6 @@ fn move_player(U index)
     */
 
     else
-        // The player just pressed the jump button while airborne
-        if pad_press & BUTTON_A
-            // reset the timer for the input buffering
-            delay_input = REACTION_TIME
-
-            // Check if the player was on the ground a few frames ago
-            if delay_ground > 0
-                wants_to_jump = true
-
         // Determine the gravity force to apply to the player
         if vel.y > 0 // (Down is positive)
             vel.y -= PLAYER_FALL
@@ -72,14 +74,14 @@ fn move_player(U index)
 
         // decrement the grounded timer
         // (this only need to run when the player is actually not grounded)
-        if delay_ground -= 1
+        if ! (delay_ground -= 1)
             delay_ground = 0
 
     // decrement the input buffering timer
     // (run it always since the button press is instantaneous)
-    if delay_input -= 1
+    if ! (delay_input -= 1)
         delay_input = 0
-    
+
     // The player wants to jump
     if wants_to_jump
         // Reset both timers

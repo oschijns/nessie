@@ -94,7 +94,13 @@ fn update_sprites()
         Position pos = players[i].position
         U px = U(pos.x)
         U py = U(pos.y)
-        o = push_oam(o, px, py, $01, %0)
+
+        U attr = %00
+        if players[i].delay_ground > 0
+            attr |= %01
+        if players[i].delay_input > 0
+            attr |= %10
+        o = push_oam(o, px, py, $01, attr)
 
     // Clear the remainder of OAM
     hide_oam(o)

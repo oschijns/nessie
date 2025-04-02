@@ -1,7 +1,7 @@
 
 
 // Player's reaction time delay
-ct Int REACTION_TIME = max(60 * (200 / 1000), 1)
+ct Int REACTION_TIME = max((60 * 200) / 1000, 1)
 
 
 /// A player in the game

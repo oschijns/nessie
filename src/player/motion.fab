@@ -59,8 +59,6 @@ fn move_player(U index)
             // clamp the slide speed
             if vel.y > PLAYER_WALL_SLIDE_SPEED
                 vel.y = PLAYER_WALL_SLIDE_SPEED
-
-        // 
     */
 
     else
